@@ -1,0 +1,48 @@
+service: bucket-test
+frameworkVersion: '>=3.38.0'
+configValidationMode: error
+
+provider:
+  name: aws
+  runtime: nodejs20.x
+  architecture: x86_64
+  logRetentionInDays: 3
+  stage: ${opt:stage, 'prd'}
+  region: ${opt:region, 'us-east-1'}
+  iam:
+    deploymentRole: arn:aws:iam::ACCOUNT_1:role/CloudFormationRole
+
+custom:
+  region: ${self:provider.region}
+  stage: ${self:provider.stage}
+
+resources:
+  Resources:
+    SharedBucket:
+      Type: AWS::S3::Bucket
+      Properties:
+        BucketName: my-public-bucket-store
+        AccessControl: BucketOwnerFullControl
+        BucketEncryption:
+          ServerSideEncryptionConfiguration:
+          - ServerSideEncryptionByDefault:
+              SSEAlgorithm: AES256
+        PublicAccessBlockConfiguration:
+          BlockPublicAcls: true
+          IgnorePublicAcls: true
+          BlockPublicPolicy: true
+          RestrictPublicBuckets: true
+          
+    BucketPolicy:
+      Type: AWS::S3::BucketPolicy
+      Properties:
+        Bucket: !Ref SharedBucket
+        PolicyDocument:
+          Version: '2012-10-17'
+          Statement:
+            - Effect: Allow
+              Principal:
+                AWS: arn:aws:iam::ACCOUNT_2:root
+              Action: 
+                - s3:PutObject
+              Resource: arn:aws:s3:::my-public-bucket-store/*
